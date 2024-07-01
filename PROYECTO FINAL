@@ -1,0 +1,615 @@
+# 1. Gestion de partidos y estadios
+import requests  # pip install requests in terminal to import API
+import json  # convertir Objetos a json
+
+class Equipo:  # Información equipos (codigo FIFA, nombre pais, grupo)
+    def __init__(self, code, name, group):
+        self.code = code
+        self.name= name # name es el país
+        self.group = group
+
+    def __str__(self):
+        return f"Equipo {self.name} ({self.code}) — Grupo {self.group}"  # string para que el API se imprima de forma legible
+
+    @classmethod
+    def resgitrar_equipos(cls):  # API equipos
+        response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/teams.json") #link EQUIPOS
+        if response.status_code == 200:  # Código 200 = Código API fue exitoso
+            data = response.json()  # Convierte response en objeto JSON
+            equipos = []  # lista vacia para datos equipo
+            for team in data:
+                equipo = cls(team["code"], team["name"], team["group"])
+                equipos.append(equipo)  # agregar data de equipo en lista vacia equipos
+            return equipos
+        else:
+            return None
+
+class Estadio:  # Información estadio (nombre y ubicacion)
+    def __init__(self, nombre, city):
+        self.nombre = nombre
+        self.city = city
+
+    def __str__(self):
+        return f"Estadio {self.nombre} - {self.city}"  # f string para que el API se imprima de forma legible
+
+    @classmethod
+    def registrar_estadios(cls): #funcion para registrar partidos 
+        response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/stadiums.json")  # link ESTADIOS
+        if response.status_code == 200:
+            data = response.json()
+            estadios = []
+            for stadium in data:
+                estadio = cls(stadium["name"],stadium["city"])
+                estadios.append(estadio)
+            return estadios
+        else:
+            return None
+        
+class Partido: #class partido para registrar los partidos
+    def __init__(self, number, home, away, date, group):
+        self.number = number
+        self.home = home
+        self.away = away
+        self.date = date
+        self.group = group
+
+    def __str__(self): #informacion como str
+        return f"Partido {self.number}: {self.home['name']} vs {self.away['name']} — Fecha: {self.date} — Grupo: {self.group}" # informacion del partido como str
+
+    @staticmethod #static method para acceder a a informacion sin crear una instancia de clase
+    def registrar_partidos():
+        response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/matches.json")  # Link to PARTIDOS
+        if response.status_code == 200:  
+            data = response.json()
+            partidos = []  # Lista vacias de partidos
+            for partido in data:
+                partido_obj = Partido(partido["number"], partido["home"], partido["away"], partido["date"], partido["group"])
+                partidos.append(partido_obj)  # agregar la informacion de los partidos a lista vacia
+            return partidos
+
+def buscar_partidos_pais(pais): #definir funcion para buscar partidos por pais
+    partidos = Partido.registrar_partidos() #toma los elementos de Class Partidos, los registra en la funcion registrar partidos y obtiene los datos de partidos
+    partidos_busqueda = [partido for partido in partidos if partido.home['name'].lower() == pais or partido.away['name'].lower() == pais]
+    return partidos_busqueda #regresa los partidos para poder hacer la busqueda de los partidos
+
+def buscar_partidos_estadio(estadio_nombre): #definir funcion para buscar partidos por estadio
+    estadios = requests.get('https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/stadiums.json').json() #obtener data de estadios
+    estadio_nombre_busqueda = next((estadio for estadio in estadios if estadio['name'].lower() == estadio_nombre.lower()), None)  #obtener nombre estadios
+    if estadio_nombre_busqueda:
+        partidos = requests.get('https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/matches.json').json() #obtener id de partidos
+        partidos_busqueda = [partido for partido in partidos if partido['stadium_id'] == estadio_nombre_busqueda['id']] #hacer match con los id de estadio y partidos para que haga la busqueda por estadios
+        return partidos_busqueda #devolver la info
+    else:
+        return None
+
+def buscar_partidos_fecha(fecha): #definir funcion para obtener partidos por fecha
+        partidos = Partido.registrar_partidos() #registrar la fecha de la onstancia date de Class partido 
+        partidos_busqueda = [partido for partido in partidos if partido.date == fecha] 
+        return partidos_busqueda #devuelve la fecha
+
+print("¡Bienvenido a la página de venta de tickets de la Eurocopa Alemania 2024!")
+def buscar_partidos():
+    while True: #bucle while mientras que la cndicion se cumpla
+        print("1. Buscar partidos por país.")
+        print("2. Buscar partidos por estadio.")
+        print("3. Buscar partidos por fecha.")
+        print("4. Salir.")
+        opcion = input("Ingrese opción que desea buscar (1, 2, 3 o 4): ") #imprimir la opciones para el ususario
+        
+        if opcion == "1": #busqueda por pais
+            print("Países disponibles: ")
+            equipos = Equipo.resgitrar_equipos() #obtener data para imprimir las opciones de paises 
+            for equipo in equipos:
+                print(equipo.name)
+            pais = input("Ingrese el nombre del país (en inglés) que desea buscar: ").lower() #lower para que no sea case sensitive
+            partidos_busqueda = buscar_partidos_pais(pais) #buscar por el pais introducido por el usuario
+            print("Partidos de", pais.capitalize())
+            for partido in partidos_busqueda:
+                print(partido) #imprimir partidos segun la busqueda
+        
+        elif opcion == "2": #busqueda por estadio
+            print("Estadios disponibles: ")
+            estadios = Estadio.registrar_estadios() # acceder a los estadios
+            for estadio in estadios:
+                print(estadio.nombre) #imprimir las opciones de estadio
+            estadio_nombre = input("Ingrese el nombre del estadio que desea buscar: ").lower() #obtener nombre del estadio ingresado por el usuario
+            partidos_busqueda = buscar_partidos_estadio(estadio_nombre) 
+            if partidos_busqueda:
+                    estadios = Estadio.registrar_estadios()
+                    estadio = next((estadio for estadio in estadios if estadio.nombre.lower() == estadio_nombre), None)  
+                    print("Partidos en", estadio_nombre.capitalize())
+                    for partido in partidos_busqueda:
+                        print(f"Partido {partido['number']}: {partido['home']['name']} vs {partido['away']['name']} — Fecha: {partido['date']} — Grupo: {partido['group']} — Estadio: {estadio.nombre} ({estadio.city})")
+            else:
+                    print("No se encontraron partidos en ese estadio")
+        
+        elif opcion == "3":
+            print("Fechas disponibles: ")
+            partidos = Partido.registrar_partidos()
+            for partido in partidos:
+                print(partido.date)
+            fecha = input("Ingrese la fecha que desea buscar (AAAA-MM-DD): ")
+            partidos_busqueda = buscar_partidos_fecha(fecha)
+            print("Partidos en", fecha)
+            for partido in partidos_busqueda:
+                print(partido)
+        
+        elif opcion == "4":
+            break
+        else:
+            print("Opción inválida. Intente nuevamente.")
+
+buscar_partidos() #COMENTAR CODIGO
+
+# 2.Gestión de venta de entradas   
+import requests
+
+class Partido: #definir clase partido
+    def __init__(self, number, home, away, date, group): #definir objetos de la clase
+        self.number = number
+        self.home = home
+        self.away = away
+        self.date = date
+        self.group = group
+
+    def __str__(self):
+        return f"Partido {self.number}: {self.home['name']} vs {self.away['name']} - Fecha: {self.date} - Grupo: {self.group}" # pasar informacion partido a str
+
+class Cliente: #definir class cliente
+    def __init__(self, nombre, cédula, edad): #definir objetos de la clase
+        self.nombre = nombre
+        self.cédula = cédula
+        self.edad = edad
+
+    def __str__(self):
+        return f"Cliente: {self.nombre} (ID: {self.cédula}, Edad: {self.edad})"# pasar informacion a str
+
+def informacion_cliente(): #definir funcion para obtener datos clientes
+    nombre = input("Por favor ingrese su nombre y apellido: ") 
+    cédula = int(input("Ingrese su cédula: "))
+    edad = int(input("Ingrese su edad: "))
+    cliente = Cliente(nombre, cédula, edad) #devuelve la informacion inrroducida del cliente 
+    return cliente
+
+def ticket_partido(): #definir funcion del partidio para obtener informacio de los partidos
+    response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/matches.json")
+    if response.status_code == 200: #code 200 : informacion del API ha sido obtenida exitosamente
+        data = response.json() #convertir informacion a json
+        partidos = [] #crear lista vacia partidos
+        for partido in data:
+            partido_obj = Partido(partido["number"], partido["home"], partido["away"], partido["date"], partido["group"]) #hacer que la informacion se muestre como str
+            partidos.append(partido_obj) #introducir informacion en lista vacia
+        return partidos
+    else:
+        return None
+
+def elegir_partido_ticket(partidos): #definir funcion para que el usuario elija el partido
+    print("Seleccione un partido:")
+    for i, partido in enumerate(partidos): #enumerar lista partidos
+        print(f"{i+1}. {partido}") #i+1 para que enumere los partidos desde 1
+    partido_elegido = int(input("Ingrese el número del partido: ")) - 1 # primer elemento de la lista es 0, -1 para escoger el elemento correcto
+    selected_match = partidos[partido_elegido] #introduce el partido elegido por el usuario a la lista partidos
+    print(f"Usted ha elegido el partido:")
+    print(selected_match)#imprime el partido elegido
+
+compra_confirmada = False
+while not compra_confirmada:
+    cliente = informacion_cliente() 
+    print(cliente) #print info cliente
+
+    partidos = ticket_partido()
+    if partidos:
+        elegir_partido_ticket(partidos) 
+    else:
+        print("No se pudo obtener la información de los partidos")
+        
+    #escoger tipo de entrada a comprar
+    print("Por favor, seleccione el tipo de entrada que desea comprar: ")
+    print("1. Entrada general - $35")
+    print("2. Entrada VIP - $75")
+
+    entrada_elegida= int(input("Ingrese el número (1 o 2) de la entrada deseada: "))
+    if entrada_elegida== 1 :
+        costo_entrada = 35
+        print("Usted ha elegido la entrada general por $35")
+        print("Podrá ver el partido desde su asiento")
+        
+    elif entrada_elegida== 2:
+        costo_entrada = 75
+        print("Usted ha elegido la entrada VIP por $75")
+        print("Podrá disfrutar del restaurante del estadio")
+        
+
+    else:
+        print("No se ha seleccionado un tipo de entrada válido")
+        
+    #crear mapa stadio para los asientos 
+
+    mapa_estadio = [
+        
+        ["A1", "A2", "A3", "A4", "A5","A6", "A7", "A8", "A9", "A10"],
+        ["B1", "B2", "B3", "B4", "B5","B6", "B7", "B8", "B9", "B10"],
+        ["C1", "C2", "C3", "C4", "C5","C6", "C7", "C8", "C9", "C10"],
+        ["D1", "D2", "D3", "D4", "D5","D6", "D7", "D8", "D9", "D10"],
+        ["E1", "E2", "E3", "E4", "E5","E6", "E7", "E8", "E9", "E10"]
+        
+    ]
+
+    asientos_ocupados = ["A1", "B2", "C3", "D4","E5", "D6","C7","B8","A9","B10"] #definir variable con sientos ocupados
+    print("Mapa del estadio:")
+    for row in mapa_estadio:
+        print(" ".join(row))# para que el mapa se imprima en filas y columnas
+    print("Asientos ocupados:", asientos_ocupados) #imprimir aisnetos ocupados
+
+    while True: #mientras que la condicion sea verdadera(que el usuario elija un asiento ocupado), se imprimira el input de elegir otro asiento
+        asiento_seleccionado = input("Seleccione un asiento: ")
+        if asiento_seleccionado in asientos_ocupados:
+                print("Lo sentimos, este asiento está ocupado. Por favor seleccione otro asiento.")
+        else:
+            print("Usted ha seleccionado el asiento:",asiento_seleccionado)
+            break #rompre el bucle de while 
+
+    #confirmar si tiene cedula vampiro para aplicar descuento
+
+    cedula_vampiro = cliente.cédula #utilizar cedula dada en class cliente
+
+    def es_vampiro(n): #definir funcion para verificar si la cedula introducida es vampiro
+        digitos = str(n) #convertir numero en cadena para indentificar los digitos
+        numero_digitos= len(digitos) #definir variable para saber el len de los digitos
+        if numero_digitos % 2 != 0 : #verificar si el nuemro de digitos es par (un numero vampiro tiene que tener un numero par de digitos)
+            return False
+        raiz_cuadrada = int(numero_digitos ** 0.5) #sacar raiz cuandrada para determinar la cantidad de numeros de los factores 
+        for i in range(10 ** (raiz_cuadrada - 1), 10 ** raiz_cuadrada):
+            for j in range(i, 10 ** raiz_cuadrada):
+                # Verificar si el producto de los factores es igual al número original
+                if i * j == n:
+                    # Verificar si los factores contienen todos los dígitos del número original
+                    if set(str(i) + str(j)) == set(digitos):
+                        return True
+
+    
+    if es_vampiro(cliente.cédula): #solo si la cedula es un numero vampiro
+        print("Su cédula es un número vampiro,¡Usted ha obtenido un 50% de descuento en su entrada!")
+        print("Resumen de su compra: ")
+        print(f"Asiento:{asiento_seleccionado}")
+        print(f"Subtotal: ${costo_entrada:.2f}") #2f para que sea un float con dos decimales
+        descuento = costo_entrada/2
+        print(f"Descuento(50%): -${descuento:.2f}") #aplicar 50% de descuento(mitad del costo de la entrada)
+        subtotal_impuesto = costo_entrada - descuento 
+        iva= subtotal_impuesto * 0.16 #agregar 16% IVA
+        print(f"IVA(16%):${iva:.2f}")
+        print(f"Total:${subtotal_impuesto+iva:.2f}") 
+         
+    else: #si la cedula no es vampiro
+        print("Resumen de su compra: ")
+        print(f"Asiento:{asiento_seleccionado}")
+        print(f"Subtotal: ${costo_entrada:.2f}") #2f para que sea un float con dos decimales
+        iva= costo_entrada * 0.16
+        print(f"IVA(16%):${iva:.2f}")
+        print(f"Total:${costo_entrada + iva:.2f}") 
+
+    while True : #mientras se cumpla la condicion
+        compra =input("¿Desea confirmar su compra?(Si/No): ") #preguntar al usuario si quiere confirmar la compra
+        if compra.lower()== "si":
+            print("¡Su compra ha sido exitosa!")
+            asientos_ocupados.append(asiento_seleccionado)
+            compra_confirmada = True
+            break #si el usuario confirma la conpra, el loop se rompe
+        elif compra.lower()== "no":
+            print("Su compra ha sido cancelada")
+            break
+        else:
+            print("Por favor, introduzca una opción válida")
+    if compra_confirmada:
+        break
+
+def calcular_total(costo_entrada, cedula_vampiro): #definir funcion para extraer el total para calcula el promedio de gastos 
+    if es_vampiro(cedula_vampiro):
+        descuento = costo_entrada/2
+        subtotal_impuesto = costo_entrada - descuento 
+        iva= subtotal_impuesto * 0.16
+        total = subtotal_impuesto + iva
+    else:
+        iva= costo_entrada * 0.16
+        total = costo_entrada + iva
+    return total
+
+# Calculate and print the total cost
+total_cost_entradas_VIP = calcular_total(costo_entrada, cliente.cédula)
+
+
+
+# 3. Gestión de asistencia a partidos # 2854ec2a-0837-4611-baac-0101f23e692f  1304daa3-c591-464e-adbc-192538de2e40
+
+import requests
+
+class Asistencia: #registrar la asistencia
+    def __init__(self):
+        self.used_tickets = []
+        self.attendance = 0
+
+    def validar_ticket(self, ticket_id):
+        response = requests.get('https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/matches.json')
+        response.raise_for_status()
+        data = response.json()
+        for match in data:
+            if match['id'] == ticket_id:
+                if ticket_id in self.used_tickets:
+                    return False
+                else:
+                    self.used_tickets.append(ticket_id)
+                    self.attendance += 1
+                    return True
+        return False
+
+
+# Create a ticket validator
+validador_ticket = Asistencia()
+
+while True:
+    # Get the ticket ID from the user
+    ticket_id = input("Ingrese el ID de su ticket: ")
+
+    # Validate the ticket
+    if validador_ticket.validar_ticket(ticket_id):
+        print("Ticket válido, ¡Bienvenido!")
+        response = input("¿Desea registrar otro ticket? (Si/No): ")
+        if response.lower()!= "si":
+            break
+    else:
+        print("El ticket no es válido o ya ha sido utilizado. Por favor, intente de nuevo.")
+#comentar codigo
+
+
+#Gestión de restaurantes 4
+import requests
+import json
+class Product: #definir clase para los productos
+    def __init__(self, name, price, adicional):  #los elementos del API extraidos: name(nombre del producto), price(precio) y adicional (para determinar el tipo de producto alimento/bebida)
+        self.name = name
+        self.price = float(price) * 1.16 #para incluir el 16% del IVA en el precio
+        self.adicional = adicional
+
+    def __str__(self): 
+        return f"Nombre del producto:{self.name} - Precio (16% IVA incluido): ${self.price:.2f} - {self.adicional}" #imprimir como str
+
+    @staticmethod 
+    def registrar_productos():  #definir funcion para registrar los productos del API
+        response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/stadiums.json")
+        if response.status_code == 200:
+            data = json.loads(response.text)  
+            products = [] 
+            Product.extraer_productos(data, products)  #registrar los productos definidos en la clase Productos
+            return products 
+        else:
+            return None
+
+    @staticmethod
+    def extraer_productos(data, products):  #definir duncion par extraer los productos
+        if isinstance(data, dict):
+            if "products" in data:
+                for product in data["products"]:
+                    if "name" in product and "price" in product and "adicional" in product:
+                        products.append(Product(product["name"], product["price"], product["adicional"]))
+                    else:
+                        return None
+            else:
+                for key, value in data.items():
+                    Product.extraer_productos(value, products)
+        elif isinstance(data, list):
+            for item in data:
+                Product.extraer_productos(item, products)
+
+    @staticmethod
+    def search_products(products, query, search_by="name"): #buscar productos en una lista según una consulta y un campo de búsqueda . query: cadena de texto que contiene la consulta de búsqueda
+        results = [] #lista vacia para almacenar productos de la busqueda
+        if search_by == "name": #verificar campo de busqueda
+            for product in products:
+                if query.lower() in product.name.lower():
+                    results.append(product)
+        elif search_by == "type": #si busqueda es por tipo
+            query_types = query.split("|") #divide la consulta de busqueda en una lista de tipos utilizando | para separarlo.
+            for product in products:
+                if any(t in product.adicional for t in query_types): #verificar si alguno de los tipos en la lista query_types se encuentra en adicional del producto
+                    results.append(product) #agregar a lista vacia results
+        elif search_by == "price_range": #busqueda por precio
+            try:
+                min_price, max_price = map(float, query.split("-")) #convertir a numeros float
+                for product in products:
+                    if min_price <= product.price <= max_price:
+                        results.append(product) #agregar a lista resutados
+            except ValueError:
+                print("Invalid price range. Please enter in the format 'in-max'.")
+        return results
+
+def print_products(products):
+    for product in products:
+        print(product)
+
+if __name__ == "__main__":
+    products = Product.registrar_productos()
+    print("Productos disponibles:")
+    print_products(products)
+
+    while True:
+        print("\nBuscar productos:")
+        print("1. Por nombre.")
+        print("2. Por tipo (alimento/bebida).")
+        print("3. Por rango de precio.")
+        print("4. Salir.")
+        choice = input("Ingrese una opción (1/2/3/4): ")
+
+        if choice == "1":
+            print("Nombre de productos: ")
+            nombres= Product.registrar_productos
+            for product in products:
+                print(product.name)
+            query = input("Ingrese el nombre del producto: ")
+            results = Product.search_products(products, query, search_by="name")
+            if results:
+                print("Resultados de la búsqueda:")
+                print_products(results)
+            else:
+                print("No se encontraron productos que coincidan con la búsqueda.")
+        
+        
+        elif choice == "2":
+            query = input("Ingrese el tipo de producto (alimento/bebida): ")
+            type_map = {
+                "alimento": ["plate", "packaged"],
+                "bebida": ["alcoholic", "non-alcoholic"]
+            }
+            query_types = []
+            for type, values in type_map.items():
+                if query.lower() == type:
+                    query_types = values
+                    break
+            if query_types:
+                results = Product.search_products(products, "|".join(query_types), search_by="type")
+                if results:
+                    print("Resultados de la búsqueda:")
+                    print_products(results)
+                    
+        elif choice == "3":
+            query = input("Ingrese su rango de precio(min-max): ")
+            results = Product.search_products(products, query, search_by="price_range")
+            if results:
+                    print("Resultados de la búsqueda:")
+                    print_products(results)      
+        
+        elif choice == "4":
+            break     
+        
+        else:
+            print("No se encontraron productos que coincidan con la búsqueda.")
+else:
+    print("Tipo de producto inválido. Intente nuevamente.")
+       
+      
+
+#Gestión de venta de restaurantes 5
+import requests
+import json
+
+class Product:
+    def __init__(self, name, price, adicional): #acceder a nombre del producto, precio y adicional(plate or packeged/alcoholic/non alcoholic)
+        self.name = name
+        self.price = float(price) 
+        self.adicional = adicional
+
+    def __str__(self): #convertir info a str
+        return f"{self.name} - ${self.price:.2f} - {self.adicional}"
+
+    @staticmethod #no depende de la clase
+    def registrar_productos():  # definir funcion para obtener data de API
+        response = requests.get("https://raw.githubusercontent.com/Algoritmos-y-Programacion/api-proyecto/main/stadiums.json")
+        if response.status_code == 200:
+            data = json.loads(response.text)  # JSON string a Python object
+            products = [] #crear lista vacia para los prooductos
+            Product.extraer_productos(data, products) #extraer los productos del API
+            return products #devolver productos
+        else:
+            return None
+
+    @staticmethod
+    def extraer_productos(data, products): 
+        if isinstance(data, dict):
+            if "products" in data:
+                for product in data["products"]:
+                    if "name" in product and "price" in product and "adicional" in product:
+                        products.append(Product(product["name"], product["price"], product["adicional"]))
+                    else:
+                        return None
+            else:
+                for key, value in data.items():
+                    Product.extraer_productos(value, products)
+        elif isinstance(data, list):
+            for item in data:
+                Product.extraer_productos(item, products)
+
+def obtener_datos_clientes():
+    cedula_cliente= input("Ingrese su cédula: ")
+    edad_cliente = int(input("Ingrese su edad: "))
+    return cedula_cliente, edad_cliente
+
+def orden_cliente(products, edad_cliente):
+    print("Seleccione los productos que desee consumir: ")
+    for i, product in enumerate(products): 
+        print(f"{i+1}.{product}")  # Imprimir la lista de productos aquí
+    producto_cliente= input("Ingrese el número de cada producto que desea comprar (separados por comas): ")
+    producto_elegido = [products[int(i)-1] for i in producto_cliente.split(",")]
+    if edad_cliente < 18 :
+        if any(product.adicional == "alcoholic" for product in producto_elegido):
+            return None
+    return producto_elegido
+
+def main():
+    product_comprados = []
+    while True :
+        products = Product.registrar_productos()
+        if products is None:
+            print("Error al obtener productos")
+            return
+
+        cedula_cliente, edad_cliente = obtener_datos_clientes()
+        producto_elegido = orden_cliente(products, edad_cliente)
+        
+        if producto_elegido is None:
+            print("Tiene que ser mayor de edad para consumir productos alcohólicos")
+            continue
+        product_comprados.extend(producto_elegido)
+        
+        def es_perf(n): #definir funcion para verificar si la cedula introducida es perfecta
+            suma_divisores = 0
+            for i in range(1, n):
+                if n % i == 0:
+                    suma_divisores += i
+            return suma_divisores == n
+
+        if es_perf(int(cedula_cliente)):
+            print("Su cédula es un número perfecto, ¡Usted ha obtenido un 15% de descuento en su compra!")
+            print("Resumen de su compra: ")
+            print("Productos seleccionados: ")
+            for product in producto_elegido:
+                print(f"-{product.name} - ${product.price:.2f}")
+            subtotal = sum(product.price for product in producto_elegido)
+            descuento = subtotal * 0.15
+            print(f"Descuento (15%): -${descuento:.2f}")
+            total = subtotal - descuento
+            print(f"Total: ${total:.2f}")
+        
+        else:
+            print("Resumen de su compra: ")
+            print("Productos seleccionados: ")
+            for product in producto_elegido:
+                print(f"-{product.name} - ${product.price:.2f}")
+            subtotal = sum(product.price for product in producto_elegido)
+            print(f"Total: ${subtotal:.2f}")
+
+        respuesta = input("¿Desea realizar la compra? (si/no): ")
+        if respuesta.lower() == "si":
+            print("¡Su pago ha sido exitoso!")
+            break
+        else:
+            print("La compra ha sido cancelada")
+            continue
+
+
+    total_cost = sum(product.price for product in product_comprados)
+    return total_cost
+
+# 6. Indicadores de gestión  
+
+def promedio_gastos(total_cost_entradas_VIP, total_cost):
+    suma_totales = total_cost_entradas_VIP + total_cost
+    promedio = suma_totales / 2
+    return promedio
+
+if __name__ == "__main__":
+    total_cost = main()
+    if total_cost is not None:
+        promedio = promedio_gastos(total_cost_entradas_VIP, total_cost)
+        print("Indicadores de gestión, aquí se mostrarán las estadística del sistema.")
+        print("¿Cuál es el promedio de gasto de un cliente VIP en un partido (ticket + restaurante)?")
+        print(f"El gasto promedio es: ${promedio:.2f}")
+
